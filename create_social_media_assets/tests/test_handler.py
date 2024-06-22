@@ -1,7 +1,7 @@
 import os
 import sys
 from unittest.mock import patch, MagicMock
-from PIL import Image
+from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 import unittest
 from handler import lambda_handler, process_image
