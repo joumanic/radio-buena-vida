@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 import unittest
-from handler import lambda_handler, process_image
+from handler import logic_handler, process_image
 
 # Mock Constants
 MONTHLY_COLOR = (68, 239, 136)
@@ -13,13 +13,13 @@ FONT_SIZE = 24
 IMAGE_DIR = '/data/'
 OUTPUT_DIR = '/mnt/data/output'
 
-class TestLambdaHandler(unittest.TestCase):
-    def test_lambda_handler(self):
+class TestLogicHandler(unittest.TestCase):
+    def logic_handler(self):
         event = {
             'trigger': True
         }
         context = {}
-        response = lambda_handler(event, context)
+        response = logic_handler(event, context)
         self.assertEqual(response['statusCode'], 200)
         self.assertIn('Images processed and uploaded successfully', response['body'])
 

@@ -13,7 +13,8 @@ IMAGE_DIR = "/create_social_media_assets/data/raw_images"
 OUTPUT_DIR = "/create_social_media_assets/data/rbv_images"
 RBV_LOGO_PATH = "/create_social_media_assets/data/radiobuenavida_logo.jpg"
 WORKING_DIRECTORY = os.getcwd()
-def lambda_handler(event, context):
+
+def logic_handler(event, context):
     if event['trigger'] == True:
         # TODO 1. Look for folder in DROPBOX to process images
             # REPLACEMENT: Grab an example image
@@ -145,4 +146,4 @@ def process_image(image_path):
             return False  # Indicate failure if an exception was raised
 
 if __name__ == '__main__':
-    lambda_handler(event = {'trigger': True}, context =  None)
+    logic_handler(event = {'trigger': True}, context =  None)
