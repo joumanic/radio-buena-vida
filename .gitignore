@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 .DS_Store
 .DS_Store
+data/host_information/hosts.xlsx
