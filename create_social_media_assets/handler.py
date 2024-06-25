@@ -60,8 +60,8 @@ def logic_handler(event, context):
             "body": 'Not Triggered'
         }
 
-def  process_image(image_path):
-    rbvBrand = getCurrentMonthAssets()
+def process_image(image_path):
+    rbvBrand = get_current_month_assets()
     with Image.open(image_path) as img:
         try:
             imgCopy = img.copy()
@@ -77,7 +77,7 @@ def  process_image(image_path):
             imgSquare.paste(imgBlurZoom, offset)  # Paste the zoomed and blurred image onto the square canvas
 
             # Make circled image and paste it on top of blurred image
-            maskedImage = circle_mask(img,rbvBrand['rgbColor'],80)
+            maskedImage = circle_mask(img,rbvBrand['rgbColor'],0.04)
             
             maskedImagePosition  = (
                 (imgSquare.width - maskedImage.width) // 2,
@@ -88,18 +88,23 @@ def  process_image(image_path):
             # Make Show's Text
             # TODO Make Show Text bigger and postioning following template 
             # Calculate text size based on image size
-            imageWidth, _ = imgSquare.size
+
+            imageWidth, imageHeight = imgSquare.size
             fontSize = int(imageWidth * 0.040)
             draw = ImageDraw.Draw(imgSquare) # make draw instance in square canvas
             font = ImageFont.load_default(size=fontSize) 
             showText = "David Barbarossa's Simple Food"
             showTextBbox = draw.textbbox((0, 0), showText, font=font)
             showTextSize = (showTextBbox[2] - showTextBbox[0], showTextBbox[3] - showTextBbox[1])
-            showTextPosition = (300, 270)
+            # Calculate dynamic position based on image size
+            positionRatio=(0.05, 0.03)
+            showTextX = int(imageWidth * positionRatio[0])
+            showTextY = int(imageHeight * positionRatio[1])
+            showTextPosition = (showTextX, showTextY)
 
             
-            rectangleMargin = 80
-            radius = 50
+            rectangleMargin = 50
+            radius = 30
             roundedRectSize = (
                 showTextPosition[0] - rectangleMargin,
                 showTextPosition[1] - rectangleMargin,
@@ -116,7 +121,9 @@ def  process_image(image_path):
             genreText = "Disco | Boogie | Leftfield"
             genreTextBbox = draw.textbbox((0, 0), genreText, font=font)
             genreTextSize = (genreTextBbox[2] - genreTextBbox[0], genreTextBbox[3] - genreTextBbox[1])
-            genreTextPosition = (300, showTextPosition[1] + showTextSize[1] + 200)
+            genreTextX = int(imageWidth * positionRatio[0])
+            genreTextY = showTextPosition[1] + showTextSize[1] + int(imageHeight * 0.04)  # Adjust vertical position
+            genreTextPosition = (genreTextX, genreTextY)
 
             genreRectSize = (
                 genreTextPosition[0] - rectangleMargin,
@@ -129,22 +136,16 @@ def  process_image(image_path):
 
 
             # Add RBV logo into the show
-            # TODO Resize and place the logo accordingly following template
             with Image.open(rbvBrand["logoFilePath"]) as rbvLogo:
                 rbvLogo = rbvLogo.convert("RGBA")
             imgSquare = overlay_image(imgSquare, rbvLogo, 0.35)
-            #logoSize = (250, 180)  # adjust size as necessary
-            #rbvLogo.thumbnail(logoSize)
-            #logo_position = (imgSquare.width - rbvLogo.width - 20, imgSquare.height - rbvLogo.height - 20) # adjust position of the logo 
-            #imgSquare.paste(rbvLogo, logo_position, rbvLogo)
-
             return imgSquare
         
         except Exception as e:
             print(f"Error processing image {image_path}: {e}")
             return None  # indicate failure if an exception was raised
 
-def getCurrentMonthAssets():
+def get_current_month_assets():
     currentMonthName = datetime.now().strftime("%B")
     rbvLogoFile = [file for file in os.listdir(RBV_LOGO_FOLDER) if currentMonthName.lower() in file.lower() and 'logo' in file.lower()][0]
     rbvCircleFile = [file for file in os.listdir(RBV_LOGO_FOLDER) if currentMonthName.lower() in file.lower() and 'circle' in file.lower()][0]
@@ -225,45 +226,66 @@ def blur_image(img: Image, blurFactor: float = 15) -> Image:
 
     return result_with_border
 
-def circle_mask(img: Image, borderColour: tuple,borderthickness: int = 0) -> Image:
+def circle_mask(img: Image, borderColour: tuple, borderthickness_ratio: float = 0.04) -> Image:
     """
     Masks an image (`img`) to fit within a circular shape with a specified border.
 
     Parameters:
     - img (Image): Image file.
     - borderColour (tuple): Color tuple (R, G, B) for the circle border.
-    - borderThickness (int, optional): Thickness of the border in pixels. Defaults to 0.
+    - borderthickness_ratio (float, optional): Ratio of the border thickness to the diameter of the circle. Defaults to 0.02.
 
     Returns:
     - PIL.Image: Image with the original image masked within a circular shape with a border.
     """
     # Calculate the diameter of the circle
-    diameter = min(img.size[0], img.size[1])
+    diameter = min(img.size[0], img.size[1]) * 0.95
     radius = diameter // 2
-
-    # Calculate the bounding box for the circle
-    bbox = (
-        (img.size[0] - diameter) // 2,
-        (img.size[1] - diameter) // 2,
-        (img.size[0] + diameter) // 2,
-        (img.size[1] + diameter) // 2)
     
     # Create a circular mask based on the image size
     mask = Image.new('L', img.size, 0)
     draw = ImageDraw.Draw(mask)
+    
+    # Calculate bounding box for the circle mask
+    bbox = (
+        (img.size[0] - diameter) // 2,
+        (img.size[1] - diameter) // 2,
+        (img.size[0] + diameter) // 2,
+        (img.size[1] + diameter) // 2
+    )
+    
+    # Draw the outer circle for masking
     draw.ellipse(bbox, fill=255)
-
-    # Apply the circular mask to the original image
+    
+    # Create a new image for the masked result
     masked_image = Image.new("RGBA", img.size)
     masked_image.paste(img, (0, 0), mask)
-
-    # If borderThickness is specified, draw a border around the circle
+    
+    # Calculate the border thickness as a fraction of the diameter
+    borderthickness = int(diameter * borderthickness_ratio)
+    
+    # If border thickness is specified, draw a border around the circle
     if borderthickness > 0:
         border_color = borderColour + (255,)  # Add alpha channel (fully opaque)
-        draw = ImageDraw.Draw(masked_image)
-        draw.ellipse(bbox, outline=border_color, width=borderthickness)
-
-    return masked_image
+        
+        # Create a new image for the border
+        border_image = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        draw_border = ImageDraw.Draw(border_image)
+        
+        # Draw the outer border
+        outer_bbox = (
+            (bbox[0]) - borderthickness // 2,
+            (bbox[1]) - borderthickness // 2,
+            (bbox[2]) + borderthickness // 2,
+            (bbox[3]) + borderthickness // 2
+        )
+        draw_border.ellipse(outer_bbox, outline=border_color, width=borderthickness)
+        
+       # Composite the masked image onto the border image
+        border_image.paste(masked_image, (0, 0), mask=masked_image)
+        return border_image
+    else:
+        return masked_image
 
 def overlay_image(img: Image, overlayImage: Image, logo_ratio=0.1):
 

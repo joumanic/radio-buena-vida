@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 import unittest
-from handler import logic_handler, process_image
+from handler import logic_handler, process_image, get_current_month_assets, zoom_image, blur_image, circle_mask, overlay_image, draw_rounded_rectangle, hex_to_rgb
 
 # Mock Constants
 MONTHLY_COLOR = (68, 239, 136)
@@ -63,6 +63,70 @@ class TestProcessImage(unittest.TestCase):
         mock_truetype.assert_called_once_with(FONT_PATH, FONT_SIZE)
         mock_img_new.save.assert_called_once()
         process_image()
+
+    def test_get_current_month_assets(self):
+        # Test the function that retrieves current month assets
+        result = get_current_month_assets()
+
+        self.assertIsInstance(result, dict)
+        self.assertIn("month", result)
+        self.assertIn("month", result)
+        self.assertIn("logoFilePath", result)
+        self.assertIn("circleFilePath", result)
+        self.assertIn("hexColor", result)
+        self.assertIn("rgbColor", result)
+        self.assertIsInstance(result["rgbColor"], tuple)
+        self.assertEqual(len(result["hexColor"]), 7)  # Assuming hex color format like #RRGGBB
+        self.assertEqual(len(result["rgbColor"]), 3)
+    
+    def test_zoom_image(self):
+        # Test zoom image function
+        img = Image.new('RGB', (100,100))
+        result = zoom_image(img, zoomFactor=2.0)
+        self.assertIsInstance(result, Image.Image)
+        self.assertEqual(result.size, (200,200))
+
+    def text_blur_image(self):
+        img = Image.new('RGB', (100,100))
+        result = blur_image(img, blurFactor = 10)
+
+        self.assertIsInstance(result, Image.Image)
+
+    def test_circle_mask(self):
+        # Test the circle mask function
+        img = Image.new('RGB', (100,100))
+        borderColour = (250,0,0)
+        result = circle_mask(img, borderColour)
+
+        self.assertIsInstance(result, borderColour)
+    
+    def text_overlay_image(self):
+        # Test the overlay_image function
+        img = Image.new('RGB', (200, 200))
+        overlay = Image.new('RGBA', (50, 50), (255, 255, 255, 128))
+        result = overlay_image(img, overlay)
+        
+        self.assertIsInstance(result, Image.Image)
+    
+    def test_draw_rounded_rectangle(self):
+        # Test the draw_rounded_rectangle function
+        img = Image.new('RGB', (200, 200))
+        draw = ImageDraw.Draw(img)
+        xy = (10, 10, 100, 100)
+        radius = 10
+        fill = (255, 0, 0)
+        
+        draw_rounded_rectangle(draw, xy, radius, fill)
+        # Add assertions if necessary to verify the drawing
+
+    def test_hex_to_rgb(self):
+        # Test the hex_to_rgb function
+        hex_color = "#FF0000"
+        result = hex_to_rgb(hex_color)
+        
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(result, (255, 0, 0))
+
 
 if __name__ == '__main__':
     unittest.main()
