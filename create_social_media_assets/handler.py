@@ -17,7 +17,7 @@ OUTPUT_DIR = "./data/rbv_show_images"
 RBV_LOGO_FOLDER = "./data/rbv_monthly_colors"
 MONTHLY_COLORS_PATH = "data/monthly_colors/monthly_colors.xlsx"
 
-# TODO handle different sizes of images so they fit into a square canvas
+# TODO handle different sizes of images so the branding is added with respective sizing
 
 def logic_handler(event, context):
     if event['trigger'] == True:
@@ -34,21 +34,21 @@ def logic_handler(event, context):
             }
         
         # Filter for image files (assuming common image extensions)
-        image_files = [f for f in files if f.lower().endswith(('png', 'jpg', 'jpeg'))]
+        imageFiles = [f for f in files if f.lower().endswith(('png', 'jpg', 'jpeg'))]
 
         # TODO 2. Loop through images
-        for image_file in image_files:
-            image_path = os.path.join(raw_images_path, image_file)
+        for imageFile in imageFiles:
+            imagePath = os.path.join(raw_images_path, imageFile)
         # TODO 4. Duplicate image
             try:
-                img = process_image(image_path=image_path)
+                img = process_image(image_path=imagePath)
                 if img:
                     # Save show file
-                    img.save(os.path.join(OUTPUT_DIR, 'output_image.jpg'), 'JPEG')
+                    img.save(os.path.join(OUTPUT_DIR, imageFile), 'JPEG')
                 else:
                     raise Exception
             except Exception as e:
-                print(f"Error processing {image_file}: {e}")
+                print(f"Error processing {imageFile}: {e}")
 
         return {
             "statusCode": 200,
@@ -60,7 +60,7 @@ def logic_handler(event, context):
             "body": 'Not Triggered'
         }
 
-def process_image(image_path):
+def  process_image(image_path):
     rbvBrand = getCurrentMonthAssets()
     with Image.open(image_path) as img:
         try:
@@ -78,7 +78,6 @@ def process_image(image_path):
 
             # Make circled image and paste it on top of blurred image
             maskedImage = circle_mask(img,rbvBrand['rgbColor'],80)
-            #maskedImage = resize_image(maskedImage)
             
             maskedImagePosition  = (
                 (imgSquare.width - maskedImage.width) // 2,
@@ -88,39 +87,44 @@ def process_image(image_path):
 
             # Make Show's Text
             # TODO Make Show Text bigger and postioning following template 
+            # Calculate text size based on image size
+            imageWidth, _ = imgSquare.size
+            fontSize = int(imageWidth * 0.040)
             draw = ImageDraw.Draw(imgSquare) # make draw instance in square canvas
-            font = ImageFont.load_default(size=FONT_SHOW_SIZE) 
+            font = ImageFont.load_default(size=fontSize) 
             showText = "David Barbarossa's Simple Food"
             showTextBbox = draw.textbbox((0, 0), showText, font=font)
             showTextSize = (showTextBbox[2] - showTextBbox[0], showTextBbox[3] - showTextBbox[1])
-            showTextPosition = (10, 10)
+            showTextPosition = (300, 270)
 
             
-            rectangleMargin = 10
+            rectangleMargin = 80
+            radius = 50
             roundedRectSize = (
                 showTextPosition[0] - rectangleMargin,
                 showTextPosition[1] - rectangleMargin,
                 showTextPosition[0] + showTextSize[0] + rectangleMargin,
                 showTextPosition[1] + showTextSize[1] + rectangleMargin
             ) 
-            draw.rectangle(roundedRectSize, outline=None, fill=rbvBrand["rgbColor"], width=0) # draw rounded rectangle for Show's Text
+            draw_rounded_rectangle(draw, roundedRectSize, radius, fill=rbvBrand["rgbColor"]) # Adjust color as needed
             draw.text(showTextPosition, showText, font=font, fill="black") # draw show text in the square canvas
 
             # Make Genres' Text
-            # TODO Make Genre Text bigger and postioning following template 
-            font = ImageFont.load_default(size=FONT_GENRE_SIZE)  
+            # TODO Make Genre Text bigger and postioning following template
+            fontSize = int(imageWidth * 0.030)
+            font = ImageFont.load_default(size=fontSize)  
             genreText = "Disco | Boogie | Leftfield"
             genreTextBbox = draw.textbbox((0, 0), genreText, font=font)
             genreTextSize = (genreTextBbox[2] - genreTextBbox[0], genreTextBbox[3] - genreTextBbox[1])
-            genreTextPosition = (10, showTextPosition[1] + showTextSize[1] + 20)
+            genreTextPosition = (300, showTextPosition[1] + showTextSize[1] + 200)
 
-            genre_rect_size = (
+            genreRectSize = (
                 genreTextPosition[0] - rectangleMargin,
                 genreTextPosition[1] - rectangleMargin,
                 genreTextPosition[0] + genreTextSize[0] + rectangleMargin,
                 genreTextPosition[1] + genreTextSize[1] + rectangleMargin
             )
-            draw.rectangle(genre_rect_size, outline=None, fill=rbvBrand['rgbColor'], width=0) # draw rounded rectangle for Genre Text
+            draw_rounded_rectangle(draw, genreRectSize, radius, fill=rbvBrand["rgbColor"])
             draw.text(genreTextPosition, genreText, font=font, fill="black") # put Genre Text in the image
 
 
@@ -128,11 +132,11 @@ def process_image(image_path):
             # TODO Resize and place the logo accordingly following template
             with Image.open(rbvBrand["logoFilePath"]) as rbvLogo:
                 rbvLogo = rbvLogo.convert("RGBA")
-
-            logoSize = (250, 180)  # adjust size as necessary
-            rbvLogo.thumbnail(logoSize)
-            logo_position = (imgSquare.width - rbvLogo.width - 20, imgSquare.height - rbvLogo.height - 20) # adjust position of the logo 
-            imgSquare.paste(rbvLogo, logo_position, rbvLogo)
+            imgSquare = overlay_image(imgSquare, rbvLogo, 0.35)
+            #logoSize = (250, 180)  # adjust size as necessary
+            #rbvLogo.thumbnail(logoSize)
+            #logo_position = (imgSquare.width - rbvLogo.width - 20, imgSquare.height - rbvLogo.height - 20) # adjust position of the logo 
+            #imgSquare.paste(rbvLogo, logo_position, rbvLogo)
 
             return imgSquare
         
@@ -261,15 +265,32 @@ def circle_mask(img: Image, borderColour: tuple,borderthickness: int = 0) -> Ima
 
     return masked_image
 
+def overlay_image(img: Image, overlayImage: Image, logo_ratio=0.1):
 
-def resize_image(img:Image, resize_factor: float = 1) -> Image:
-    # Determine the new size based on resize factor
-    newSize = (int(img.width * resize_factor), int(img.height * resize_factor))
+    # Calculate the new logo dimensions
+    logo_width = int(img.width * logo_ratio)
+    logo_height = int(overlayImage.width * overlayImage.height / overlayImage.width * (img.width * logo_ratio) / overlayImage.width)
+    
+    # Resize the logo
+    overlayImage = overlayImage.resize((logo_width, logo_height), Image.LANCZOS)
+    
+    # Calculate position for the logo (bottom-right corner)
+    position = (img.width - logo_width, img.height - logo_height)
+    
+    # Overlay the logo on the image
+    img.paste(overlayImage, position, overlayImage if overlayImage.mode == 'RGBA' else None)
+    
+    # Save the result
+    return img
 
-    # Resize the image to the new size
-    imgResized = img.resize(newSize, Image.LANCZOS)
-
-    return imgResized
+def draw_rounded_rectangle(draw, xy, radius, fill):
+    x0, y0, x1, y1 = xy
+    draw.rectangle([x0 + radius, y0, x1 - radius, y1], fill=fill)
+    draw.rectangle([x0, y0 + radius, x1, y1 - radius], fill=fill)
+    draw.pieslice([x0, y0, x0 + 2*radius, y0 + 2*radius], 180, 270, fill=fill)
+    draw.pieslice([x1 - 2*radius, y0, x1, y0 + 2*radius], 270, 360, fill=fill)
+    draw.pieslice([x0, y1 - 2*radius, x0 + 2*radius, y1], 90, 180, fill=fill)
+    draw.pieslice([x1 - 2*radius, y1 - 2*radius, x1, y1], 0, 90, fill=fill)
 
 def hex_to_rgb(hex_color):
     """Convert hex color string to RGB tuple."""
