@@ -6,12 +6,14 @@ Create social media assets for Radio Buena Vida
 import os 
 from datetime import datetime
 import pandas as pd
+import logging
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-FONT_PATH = "./data/fonts/dejavu-sans/DejaVuSans-Bold.ttf"
-FONT_SHOW_SIZE = 32
-FONT_GENRE_SIZE = 18
+FONT_PATH = "./data/fonts/din2014_demi.otf"
+FONT_SHOW_SIZE = 45
+FONT_GENRE_SIZE = 40
 POST_SQUARE_SIZE= 1080
+
 IMAGE_DIR = "./data/show_images"
 OUTPUT_DIR = "./data/rbv_show_images"
 RBV_LOGO_FOLDER = "./data/rbv_monthly_colors"
@@ -20,6 +22,16 @@ MONTHLY_COLORS_PATH = "data/monthly_colors/monthly_colors.xlsx"
 # TODO handle different sizes of images so the branding is added with respective sizing
 
 def logic_handler(event, context):
+    """
+    Handles the main logic when an event is triggered.
+
+    Parameters:
+    - event (dict): The event data containing the trigger status.
+    - context: The context in which the function is executed.
+
+    Returns:
+    - dict: A response with the status code and body message.
+    """
     if event['trigger'] == True:
         # TODO 1. Look for folder in DROPBOX to process images
             # REPLACEMENT: Grab an example image
@@ -61,6 +73,15 @@ def logic_handler(event, context):
         }
 
 def process_image(image_path):
+    """
+    Processes an image by applying various transformations.
+
+    Parameters:
+    - image_path (str): The path to the image file.
+
+    Returns:
+    - Image or None: The processed image or None if processing failed.
+    """
     rbvBrand = get_current_month_assets()
     with Image.open(image_path) as img:
         try:
@@ -90,11 +111,17 @@ def process_image(image_path):
             # Calculate text size based on image size
 
             imageWidth, imageHeight = imgSquare.size
-            fontSize = int(imageWidth * 0.040)
             draw = ImageDraw.Draw(imgSquare) # make draw instance in square canvas
-            font = ImageFont.load_default(size=fontSize) 
+            # Load the DIN 2014 font
+            try:
+                fontSize = int(POST_SQUARE_SIZE * 0.04)  # Base font size
+                fontSize = int((img.width / POST_SQUARE_SIZE) * fontSize)
+                fontShow = ImageFont.truetype(FONT_PATH, fontSize)
+            except IOError:
+                logging.error("Could not load DIN 2014 font. Using default font for show name.")
+                fontShow = ImageFont.load_default()
             showText = "David Barbarossa's Simple Food"
-            showTextBbox = draw.textbbox((0, 0), showText, font=font)
+            showTextBbox = draw.textbbox((0, 0), showText, font=fontShow)
             showTextSize = (showTextBbox[2] - showTextBbox[0], showTextBbox[3] - showTextBbox[1])
             # Calculate dynamic position based on image size
             positionRatio=(0.05, 0.03)
@@ -112,14 +139,19 @@ def process_image(image_path):
                 showTextPosition[1] + showTextSize[1] + rectangleMargin
             ) 
             draw_rounded_rectangle(draw, roundedRectSize, radius, fill=rbvBrand["rgbColor"]) # Adjust color as needed
-            draw.text(showTextPosition, showText, font=font, fill="black") # draw show text in the square canvas
+            draw.text(showTextPosition, showText, font=fontShow, fill="black") # draw show text in the square canvas
 
             # Make Genres' Text
             # TODO Make Genre Text bigger and postioning following template
-            fontSize = int(imageWidth * 0.030)
-            font = ImageFont.load_default(size=fontSize)  
+            try:
+                fontSize = int(POST_SQUARE_SIZE * 0.03)  # Base font size
+                fontSize = int((img.width / POST_SQUARE_SIZE) * fontSize)
+                fontGenre = ImageFont.truetype(FONT_PATH, fontSize)
+            except IOError:
+                logging.error("Could not load DIN 2014 font. Using default font for genre name.")
+                fontGenre = ImageFont.load_default()
             genreText = "Disco | Boogie | Leftfield"
-            genreTextBbox = draw.textbbox((0, 0), genreText, font=font)
+            genreTextBbox = draw.textbbox((0, 0), genreText, font=fontGenre)
             genreTextSize = (genreTextBbox[2] - genreTextBbox[0], genreTextBbox[3] - genreTextBbox[1])
             genreTextX = int(imageWidth * positionRatio[0])
             genreTextY = showTextPosition[1] + showTextSize[1] + int(imageHeight * 0.04)  # Adjust vertical position
@@ -132,7 +164,7 @@ def process_image(image_path):
                 genreTextPosition[1] + genreTextSize[1] + rectangleMargin
             )
             draw_rounded_rectangle(draw, genreRectSize, radius, fill=rbvBrand["rgbColor"])
-            draw.text(genreTextPosition, genreText, font=font, fill="black") # put Genre Text in the image
+            draw.text(genreTextPosition, genreText, font=fontGenre, fill="black") # put Genre Text in the image
 
 
             # Add RBV logo into the show
@@ -146,6 +178,12 @@ def process_image(image_path):
             return None  # indicate failure if an exception was raised
 
 def get_current_month_assets():
+    """
+    Fetches the assets for the current month.
+
+    Returns:
+    - dict: A dictionary containing the current month's assets including logo paths and colors.
+    """
     currentMonthName = datetime.now().strftime("%B")
     rbvLogoFile = [file for file in os.listdir(RBV_LOGO_FOLDER) if currentMonthName.lower() in file.lower() and 'logo' in file.lower()][0]
     rbvCircleFile = [file for file in os.listdir(RBV_LOGO_FOLDER) if currentMonthName.lower() in file.lower() and 'circle' in file.lower()][0]
@@ -182,7 +220,6 @@ def zoom_image(img: Image, zoomFactor: float =1.5) -> Image:
     return imgZoomed
 
 def blur_image(img: Image, blurFactor: float = 15) -> Image:
-
     """
     Applies a Gaussian blur to an image.
 
@@ -288,7 +325,17 @@ def circle_mask(img: Image, borderColour: tuple, borderthickness_ratio: float = 
         return masked_image
 
 def overlay_image(img: Image, overlayImage: Image, logo_ratio=0.1):
+    """
+    Overlays an image (e.g., logo) onto another image at a specified ratio.
 
+    Parameters:
+    - img (Image): The base image.
+    - overlayImage (Image): The image to overlay.
+    - logo_ratio (float, optional): The ratio of the overlay image size relative to the base image. Default is 0.1.
+
+    Returns:
+    - Image: The image with the overlay applied.
+    """
     # Calculate the new logo dimensions
     logo_width = int(img.width * logo_ratio)
     logo_height = int(overlayImage.width * overlayImage.height / overlayImage.width * (img.width * logo_ratio) / overlayImage.width)
@@ -306,6 +353,15 @@ def overlay_image(img: Image, overlayImage: Image, logo_ratio=0.1):
     return img
 
 def draw_rounded_rectangle(draw, xy, radius, fill):
+    """
+    Draws a rounded rectangle on a given drawing context.
+
+    Parameters:
+    - draw: The drawing context.
+    - xy (tuple): The bounding box of the rectangle (x0, y0, x1, y1).
+    - radius (int): The radius of the corners.
+    - fill: The fill color of the rectangle.
+    """
     x0, y0, x1, y1 = xy
     draw.rectangle([x0 + radius, y0, x1 - radius, y1], fill=fill)
     draw.rectangle([x0, y0 + radius, x1, y1 - radius], fill=fill)
@@ -315,7 +371,15 @@ def draw_rounded_rectangle(draw, xy, radius, fill):
     draw.pieslice([x1 - 2*radius, y1 - 2*radius, x1, y1], 0, 90, fill=fill)
 
 def hex_to_rgb(hex_color):
-    """Convert hex color string to RGB tuple."""
+    """
+    Converts a hex color string to an RGB tuple.
+
+    Parameters:
+    - hex_color (str): The hex color string.
+
+    Returns:
+    - tuple: The RGB color as a tuple.
+    """
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 

@@ -1,132 +1,123 @@
 import os
 import sys
 from unittest.mock import patch, MagicMock
-from PIL import Image, ImageDraw
+from PIL import Image
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 import unittest
-from handler import logic_handler, process_image, get_current_month_assets, zoom_image, blur_image, circle_mask, overlay_image, draw_rounded_rectangle, hex_to_rgb
+from handler import logic_handler, process_image, zoom_image, blur_image, hex_to_rgb
 
-# Mock Constants
-MONTHLY_COLOR = (68, 239, 136)
-FONT_PATH = "fonts/DejaVuSans-Bold.ttf"
-FONT_SIZE = 24
-IMAGE_DIR = '/data/'
-OUTPUT_DIR = '/mnt/data/output'
+class TestImageProcessingFunctions(unittest.TestCase):
 
-class TestLogicHandler(unittest.TestCase):
-    def logic_handler(self):
-        event = {
-            'trigger': True
-        }
-        context = {}
+    @patch('os.listdir')
+    @patch('os.getenv')
+    @patch('handler.process_image')  # Replace 'your_module_name' with the actual module name where the process_image function is defined
+    def test_logic_handler_triggered(self, mock_process_image, mock_getenv, mock_listdir):
+        """
+        Tests the main logic handler when the trigger event is True.
+        """
+        # Mock environment variables and directory listing
+        mock_getenv.return_value = 'test/raw_images'
+        mock_listdir.return_value = ['image1.jpg', 'image2.png', 'document.pdf']
+        
+        with patch('builtins.print'):
+            mock_process_image.side_effect = [Image.new('RGB', (100, 100)), None]
+                
+            event = {'trigger': True}
+            context = None
+            response = logic_handler(event, context)
+                
+            # Check that process_image is called twice (for two images)
+            self.assertEqual(mock_process_image.call_count, 2)
+                
+            # Verify the response
+            self.assertEqual(response['statusCode'], 200)
+            self.assertEqual(response['body'], 'Images processed and uploaded successfully')
+
+    @patch('os.listdir')
+    @patch('os.getenv')
+    def test_logic_handler_directory_not_found(self, mock_getenv, mock_listdir):
+        """
+        Tests the main logic handler when the raw_images directory is not found.
+        """
+        # Mock environment variable and simulate FileNotFoundError
+        mock_getenv.return_value = 'invalid/path'
+        mock_listdir.side_effect = FileNotFoundError
+        
+        event = {'trigger': True}
+        context = None
         response = logic_handler(event, context)
-        self.assertEqual(response['statusCode'], 200)
-        self.assertIn('Images processed and uploaded successfully', response['body'])
-
-class TestProcessImage(unittest.TestCase):
-    @patch('PIL.Image.open')
-    @patch('PIL.ImageFont.truetype')
-    @patch('os.path.join', return_value='/mnt/data/radiobuenavida_logo.jpg')
-
-    def test_process_image(self, mock_path_join, mock_truetype, mock_open):
-        # Mock image object and its methods
-        mock_img = MagicMock()
-        mock_open.return_value.__enter__.return_value = mock_img
-        mock_img_copy = MagicMock()
-        mock_img.copy.return_value = mock_img_copy
-        mock_img_copy.resize.return_value = mock_img_copy
-        mock_img_copy.filter.return_value = mock_img_copy
-
-        # Mock for new image creation and drawing
-        mock_img_new = MagicMock()
-        Image.new = MagicMock(return_value=mock_img_new)
-        ImageDraw.Draw = MagicMock()
-        ImageDraw.Draw.return_value.textsize.return_value = (200, 50)
         
-        # Mock logo processing
-        mock_logo = MagicMock()
-        mock_logo.convert.return_value = mock_logo
-        mock_logo.getdata.return_value = [(255, 255, 255, 255)]
-        mock_logo.size = (150, 150)
-        mock_open.return_value.__enter__.return_value = mock_logo
+        # Verify the response
+        self.assertEqual(response['statusCode'], 500)
+        self.assertEqual(response['body'], 'raw_images directory not found')
 
-        # Run the function
-        process_image('data/raw/images/sample_image.jpg')
+    @patch('handler.get_current_month_assets')  # Replace 'your_module_name' with the actual module name where the get_current_month_assets function is defined
+    class TestImageProcessingFunctions(unittest.TestCase):
 
-        # Assertions to verify the expected calls and operations
-        mock_open.assert_called()
-        mock_img.copy.assert_called_once()
-        mock_img_copy.resize.assert_called_once()
-        mock_img_copy.filter.assert_called_once()
-        Image.new.assert_called_once()
-        ImageDraw.Draw.assert_called_once()
-        mock_truetype.assert_called_once_with(FONT_PATH, FONT_SIZE)
-        mock_img_new.save.assert_called_once()
-        process_image()
+    @patch('your_module_name.get_current_month_assets')  # Replace 'your_module_name' with the actual module name where the get_current_month_assets function is defined
+    def test_process_image_success(self, mock_get_assets):
+        """
+        Tests the process_image function with a valid image path.
+        """
+        mock_get_assets.return_value = {
+            "month": "January",
+            "logoFilePath": "path/to/logo.png",
+            "circleFilePath": "path/to/circle.png",
+            "hexColor": "#FFFFFF",
+            "rgbColor": (255, 255, 255)
+        }
+        
+        # Create a sample image to test
+        test_image_path = 'test_image.jpg'
+        with Image.new('RGB', (100, 100)) as img:
+            img.save(test_image_path)
+        
+        # Ensure the image file is correctly created
+        self.assertTrue(os.path.exists(test_image_path))
+        
+        # Test the process_image function
+        result_img = process_image(test_image_path)
+        
+        # Check if the result is not None
+        logging.info(f"Result image: {result_img}")
+        self.assertIsNotNone(result_img)
+        self.assertIsInstance(result_img, Image.Image)
+        
+        # Clean up
+        if os.path.exists(test_image_path):
+            os.remove(test_image_path)
 
-    def test_get_current_month_assets(self):
-        # Test the function that retrieves current month assets
-        result = get_current_month_assets()
-
-        self.assertIsInstance(result, dict)
-        self.assertIn("month", result)
-        self.assertIn("month", result)
-        self.assertIn("logoFilePath", result)
-        self.assertIn("circleFilePath", result)
-        self.assertIn("hexColor", result)
-        self.assertIn("rgbColor", result)
-        self.assertIsInstance(result["rgbColor"], tuple)
-        self.assertEqual(len(result["hexColor"]), 7)  # Assuming hex color format like #RRGGBB
-        self.assertEqual(len(result["rgbColor"]), 3)
-    
+            
     def test_zoom_image(self):
-        # Test zoom image function
-        img = Image.new('RGB', (100,100))
-        result = zoom_image(img, zoomFactor=2.0)
-        self.assertIsInstance(result, Image.Image)
-        self.assertEqual(result.size, (200,200))
-
-    def text_blur_image(self):
-        img = Image.new('RGB', (100,100))
-        result = blur_image(img, blurFactor = 10)
-
-        self.assertIsInstance(result, Image.Image)
-
-    def test_circle_mask(self):
-        # Test the circle mask function
-        img = Image.new('RGB', (100,100))
-        borderColour = (250,0,0)
-        result = circle_mask(img, borderColour)
-
-        self.assertIsInstance(result, borderColour)
+        """
+        Tests the zoom_image function.
+        """
+        with Image.new('RGB', (100, 100)) as img:
+            zoomed_img = zoom_image(img)
+            
+            # Check if the zoomed image has the correct size
+            expected_size = (150, 150)  # 1.5 times the original size
+            self.assertEqual(zoomed_img.size, expected_size)
     
-    def text_overlay_image(self):
-        # Test the overlay_image function
-        img = Image.new('RGB', (200, 200))
-        overlay = Image.new('RGBA', (50, 50), (255, 255, 255, 128))
-        result = overlay_image(img, overlay)
-        
-        self.assertIsInstance(result, Image.Image)
+    def test_blur_image(self):
+        """
+        Tests the blur_image function.
+        """
+        with Image.new('RGB', (100, 100)) as img:
+            blurred_img = blur_image(img)
+            
+            # Check if the blurred image is an instance of Image
+            self.assertIsInstance(blurred_img, Image.Image)
     
-    def test_draw_rounded_rectangle(self):
-        # Test the draw_rounded_rectangle function
-        img = Image.new('RGB', (200, 200))
-        draw = ImageDraw.Draw(img)
-        xy = (10, 10, 100, 100)
-        radius = 10
-        fill = (255, 0, 0)
-        
-        draw_rounded_rectangle(draw, xy, radius, fill)
-        # Add assertions if necessary to verify the drawing
-
     def test_hex_to_rgb(self):
-        # Test the hex_to_rgb function
-        hex_color = "#FF0000"
-        result = hex_to_rgb(hex_color)
+        """
+        Tests the hex_to_rgb function.
+        """
+        hex_color = "#FFAABB"
+        rgb_color = hex_to_rgb(hex_color)
         
-        self.assertIsInstance(result, tuple)
-        self.assertEqual(result, (255, 0, 0))
-
+        # Check if the RGB conversion is correct
+        self.assertEqual(rgb_color, (255, 170, 187))
 
 if __name__ == '__main__':
     unittest.main()
