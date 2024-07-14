@@ -38,7 +38,7 @@ def logic_handler():
         hexColor = row['Color']
         monthlyColor = hex_to_rgb(hexColor)
 
-        brandFiles = [file for file in os.listdir(RBV_BRAND_FOLDER) if '.DS_Store' not in file]
+        brandFiles = [file for file in os.listdir(RBV_BRAND_FOLDER) if '.DS_Store' not in file and os.path.isfile(os.path.join(RBV_BRAND_FOLDER, file))]
         
         for fileName in brandFiles:
             filePath = os.path.join(RBV_BRAND_FOLDER, fileName)
@@ -67,3 +67,6 @@ def hex_to_rgb(hex_color):
     """Convert hex color string to RGB tuple."""
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+if __name__ == '__main__':
+    logic_handler()

@@ -162,3 +162,5 @@ cython_debug/
 .DS_Store
 data/host_information/hosts.xlsx
 .DS_Store
+/data/rbv_show_images
+/data

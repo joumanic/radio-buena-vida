@@ -170,7 +170,12 @@ def process_image(image_path):
             # Add RBV logo into the show
             with Image.open(rbvBrand["logoFilePath"]) as rbvLogo:
                 rbvLogo = rbvLogo.convert("RGBA")
-            imgSquare = overlay_image(imgSquare, rbvLogo, 0.35)
+            imgSquare = overlay_image(imgSquare, rbvLogo, 0.25, offsetPercentage=(0.05,0.075))
+
+             # Add RBV website logo into the show
+            with Image.open(rbvBrand["websiteLogoFilePath"]) as rbvWebsiteLogo:
+                rbvWebsiteLogo = rbvWebsiteLogo.convert("RGBA")
+            imgSquare = overlay_image(imgSquare, rbvWebsiteLogo, 0.25, offsetPercentage=(0.05,0.025))
             return imgSquare
         
         except Exception as e:
@@ -186,16 +191,16 @@ def get_current_month_assets():
     """
     currentMonthName = datetime.now().strftime("%B")
     rbvLogoFile = [file for file in os.listdir(RBV_LOGO_FOLDER) if currentMonthName.lower() in file.lower() and 'logo' in file.lower()][0]
-    rbvCircleFile = [file for file in os.listdir(RBV_LOGO_FOLDER) if currentMonthName.lower() in file.lower() and 'circle' in file.lower()][0]
     rbvLogoPath = os.path.join(RBV_LOGO_FOLDER, rbvLogoFile)
-    rbvCircleLogoPath = os.path.join(RBV_LOGO_FOLDER, rbvCircleFile)
+    rbvWebsiteLogoFile = [file for file in os.listdir(RBV_LOGO_FOLDER) if currentMonthName.lower() in file.lower() and 'website' in file.lower()][0]
+    rbvWebsiteLogoPath = os.path.join(RBV_LOGO_FOLDER, rbvWebsiteLogoFile)
     monthlyColorsDf = pd.read_excel(MONTHLY_COLORS_PATH, header=0)
     hexColor = monthlyColorsDf["Color"].loc[monthlyColorsDf["Month"]==currentMonthName].values[0]
 
     rbvBrand = {
         "month": currentMonthName,
         "logoFilePath":rbvLogoPath,
-        "circleFilePath": rbvCircleLogoPath,
+        "websiteLogoFilePath": rbvWebsiteLogoPath,
         "hexColor": hexColor,
         "rgbColor": hex_to_rgb(hexColor)
     }
@@ -232,36 +237,6 @@ def blur_image(img: Image, blurFactor: float = 15) -> Image:
     imgBlurred = img.filter(ImageFilter.GaussianBlur(blurFactor))
     return imgBlurred
     
-
-    """
-    Masks an image (`img`) to fit within the filled area of a outline (`maskImg`).
-
-    Parameters:
-    - img (Image): Image file.
-    - maskImg (PIL.Image): Image object representing the outline.
-
-    Returns:
-    - PIL.Image: Image with the original image masked within the filled area of `circleImg`.
-    """
-    # Resize the original image to fit within the circle image
-    dancingImageResized = img.resize(maskImg.size, Image.LANCZOS)
-
-    # Create a mask from the circle image's alpha channel
-    circleMask = maskImg.split()[3]
-
-    # Ensure the mask has the correct size and transparency
-    mask = Image.new("L", maskImg.size, 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0, 0, maskImg.width, maskImg.height), fill=255)
-
-    # Create a new image with an alpha layer (RGBA)
-    result = Image.new("RGBA", maskImg.size)
-    result.paste(dancingImageResized, (0, 0), mask)
-
-    # Composite the circle image (with borders) on top of the result
-    result_with_border = Image.alpha_composite(result, maskImg)
-
-    return result_with_border
 
 def circle_mask(img: Image, borderColour: tuple, borderthickness_ratio: float = 0.04) -> Image:
     """
@@ -324,31 +299,35 @@ def circle_mask(img: Image, borderColour: tuple, borderthickness_ratio: float = 
     else:
         return masked_image
 
-def overlay_image(img: Image, overlayImage: Image, logo_ratio=0.1):
+def overlay_image(img: Image, overlayImage: Image,logoRatio=0.1,offsetPercentage=(0.05, 0.05)):
     """
     Overlays an image (e.g., logo) onto another image at a specified ratio.
 
     Parameters:
     - img (Image): The base image.
     - overlayImage (Image): The image to overlay.
-    - logo_ratio (float, optional): The ratio of the overlay image size relative to the base image. Default is 0.1.
 
     Returns:
     - Image: The image with the overlay applied.
     """
+
     # Calculate the new logo dimensions
-    logo_width = int(img.width * logo_ratio)
-    logo_height = int(overlayImage.width * overlayImage.height / overlayImage.width * (img.width * logo_ratio) / overlayImage.width)
-    
+    logoWidth = int(img.width * logoRatio)
+    logoHeight = int(overlayImage.height * (logoWidth / overlayImage.width))
+
     # Resize the logo
-    overlayImage = overlayImage.resize((logo_width, logo_height), Image.LANCZOS)
-    
-    # Calculate position for the logo (bottom-right corner)
-    position = (img.width - logo_width, img.height - logo_height)
-    
+    overlayImage = overlayImage.resize((logoWidth, logoHeight), Image.LANCZOS)
+
+    # Calculate the proportional offset
+    offset_x = int(img.width * offsetPercentage[0])
+    offset_y = int(img.height * offsetPercentage[1])
+
+    # Calculate position for the logo (bottom-right corner with offset)
+    position = (img.width - logoWidth - offset_x, img.height - logoHeight - offset_y)
+
     # Overlay the logo on the image
     img.paste(overlayImage, position, overlayImage if overlayImage.mode == 'RGBA' else None)
-    
+
     # Save the result
     return img
 
