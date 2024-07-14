@@ -10,9 +10,9 @@ import logging
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 FONT_PATH = "./data/fonts/din2014_demi.otf"
-FONT_SHOW_SIZE = 45
-FONT_GENRE_SIZE = 40
 POST_SQUARE_SIZE= 1080
+FONT_SHOW_SIZE_RATIO = 0.04
+FONT_GENRE_SIZE_RATIO = 0.035
 
 IMAGE_DIR = "./data/show_images"
 OUTPUT_DIR = "./data/rbv_show_images"
@@ -107,19 +107,17 @@ def process_image(image_path):
             imgSquare.paste(maskedImage, maskedImagePosition, maskedImage)
 
             # Make Show's Text
-            # TODO Make Show Text bigger and postioning following template 
             # Calculate text size based on image size
-
             imageWidth, imageHeight = imgSquare.size
             draw = ImageDraw.Draw(imgSquare) # make draw instance in square canvas
             # Load the DIN 2014 font
             try:
-                fontSize = int(POST_SQUARE_SIZE * 0.04)  # Base font size
-                fontSize = int((img.width / POST_SQUARE_SIZE) * fontSize)
-                fontShow = ImageFont.truetype(FONT_PATH, fontSize)
+                fontSize = int(imageHeight * FONT_SHOW_SIZE_RATIO)  # Calculate font size based on image height
+                fontShow = ImageFont.truetype(FONT_PATH, fontSize)  # Adjust font path
             except IOError:
                 logging.error("Could not load DIN 2014 font. Using default font for show name.")
                 fontShow = ImageFont.load_default()
+
             showText = "David Barbarossa's Simple Food"
             showTextBbox = draw.textbbox((0, 0), showText, font=fontShow)
             showTextSize = (showTextBbox[2] - showTextBbox[0], showTextBbox[3] - showTextBbox[1])
@@ -130,26 +128,35 @@ def process_image(image_path):
             showTextPosition = (showTextX, showTextY)
 
             
-            rectangleMargin = 50
-            radius = 30
+            
+
+            # Define the ratio
+            marginRatio = 0.015  # 5% of the image dimensions
+            # Define the rectangle roundness
+            radius = 40
+            # Calculate the rectangle margin based on the image dimensions
+            rectangleMarginWidth = imageWidth * marginRatio
+            rectangleMarginHeight = imageHeight * marginRatio
+
             roundedRectSize = (
-                showTextPosition[0] - rectangleMargin,
-                showTextPosition[1] - rectangleMargin,
-                showTextPosition[0] + showTextSize[0] + rectangleMargin,
-                showTextPosition[1] + showTextSize[1] + rectangleMargin
+                showTextPosition[0] - rectangleMarginWidth,
+                showTextPosition[1] - rectangleMarginHeight,
+                showTextPosition[0] + showTextSize[0] + rectangleMarginWidth,
+                showTextPosition[1] + showTextSize[1] + rectangleMarginHeight
             ) 
             draw_rounded_rectangle(draw, roundedRectSize, radius, fill=rbvBrand["rgbColor"]) # Adjust color as needed
             draw.text(showTextPosition, showText, font=fontShow, fill="black") # draw show text in the square canvas
 
             # Make Genres' Text
             # TODO Make Genre Text bigger and postioning following template
+             # Load the DIN 2014 font
             try:
-                fontSize = int(POST_SQUARE_SIZE * 0.03)  # Base font size
-                fontSize = int((img.width / POST_SQUARE_SIZE) * fontSize)
-                fontGenre = ImageFont.truetype(FONT_PATH, fontSize)
+                fontSize = int(imageHeight * FONT_GENRE_SIZE_RATIO)  # Calculate font size based on image height
+                fontGenre = ImageFont.truetype(FONT_PATH, fontSize)  # Adjust font path
             except IOError:
-                logging.error("Could not load DIN 2014 font. Using default font for genre name.")
+                logging.error("Could not load DIN 2014 font. Using default font for shgenreow name.")
                 fontGenre = ImageFont.load_default()
+
             genreText = "Disco | Boogie | Leftfield"
             genreTextBbox = draw.textbbox((0, 0), genreText, font=fontGenre)
             genreTextSize = (genreTextBbox[2] - genreTextBbox[0], genreTextBbox[3] - genreTextBbox[1])
@@ -158,10 +165,10 @@ def process_image(image_path):
             genreTextPosition = (genreTextX, genreTextY)
 
             genreRectSize = (
-                genreTextPosition[0] - rectangleMargin,
-                genreTextPosition[1] - rectangleMargin,
-                genreTextPosition[0] + genreTextSize[0] + rectangleMargin,
-                genreTextPosition[1] + genreTextSize[1] + rectangleMargin
+                genreTextPosition[0] - rectangleMarginWidth,
+                genreTextPosition[1] - rectangleMarginHeight,
+                genreTextPosition[0] + genreTextSize[0] + rectangleMarginWidth,
+                genreTextPosition[1] + genreTextSize[1] + rectangleMarginHeight
             )
             draw_rounded_rectangle(draw, genreRectSize, radius, fill=rbvBrand["rgbColor"])
             draw.text(genreTextPosition, genreText, font=fontGenre, fill="black") # put Genre Text in the image
