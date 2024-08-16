@@ -89,20 +89,28 @@ def process_image(image_path):
             # TODO Make Show Text bigger and postioning following template 
             # Calculate text size based on image size
 
+<<<<<<< Updated upstream
             imageWidth, imageHeight = imgSquare.size
             fontSize = int(imageWidth * 0.040)
             draw = ImageDraw.Draw(imgSquare) # make draw instance in square canvas
             font = ImageFont.load_default(size=fontSize) 
             showText = "David Barbarossa's Simple Food"
             showTextBbox = draw.textbbox((0, 0), showText, font=font)
+=======
+            # DISABLED TEMPORARILY: Need show form to be done before doing this logic
+            '''
+            showText = "David Barbarossa's Simple Food"
+            showText = "BBAR"
+            showTextBbox = draw.textbbox((0, 0), showText, font=fontShow)
+>>>>>>> Stashed changes
             showTextSize = (showTextBbox[2] - showTextBbox[0], showTextBbox[3] - showTextBbox[1])
             # Calculate dynamic position based on image size
             positionRatio=(0.05, 0.03)
             showTextX = int(imageWidth * positionRatio[0])
             showTextY = int(imageHeight * positionRatio[1])
             showTextPosition = (showTextX, showTextY)
-
             
+<<<<<<< Updated upstream
             rectangleMargin = 50
             radius = 30
             roundedRectSize = (
@@ -113,28 +121,84 @@ def process_image(image_path):
             ) 
             draw_rounded_rectangle(draw, roundedRectSize, radius, fill=rbvBrand["rgbColor"]) # Adjust color as needed
             draw.text(showTextPosition, showText, font=font, fill="black") # draw show text in the square canvas
+=======
+            # Define the ratio
+            marginRatio = 0.015  # 5% of the image dimensions
+            # Define the rectangle roundness
+            radius = 40
+            # Calculate the rectangle margin based on the image dimensions
+            rectangleMarginWidth = imageWidth * marginRatio
+            rectangleMarginHeight = imageHeight * marginRatio
+
+
+            # Adjust genreRectSize to center the text
+            # Calculate the size of the rounded rectangle ensuring text is centered
+            showRectSize = (
+                showTextPosition[0] - rectangleMarginWidth,
+                showTextPosition[1] - rectangleMarginHeight,
+                showTextPosition[0] + showTextSize[0] + rectangleMarginWidth,
+                showTextPosition[1] + showTextSize[1] + rectangleMarginHeight
+            )
+
+            # Ensure the text is centered within the rectangle
+            showTextCenterX = (showRectSize[0] + showRectSize[2]) / 2  # Calculate center X
+            showTextCenterY = (showRectSize[1] + showRectSize[3]) / 2  # Calculate center Y
+
+            # Adjust genreRectSize to center the text
+            showRectSize = (
+                showTextCenterX - showTextSize[0] / 2 - rectangleMarginWidth,
+                showTextCenterY - showTextSize[1] / 2 - rectangleMarginHeight,
+                showTextCenterX + showTextSize[0] / 2 + rectangleMarginWidth,
+                showTextCenterY + showTextSize[1] / 2 + rectangleMarginHeight
+            )
+            draw_rounded_rectangle(draw, showRectSize, radius, fill=rbvBrand["rgbColor"]) # Adjust color as needed
+            draw.text(showTextPosition, showText, font=fontShow, fill="black") # draw show text in the square canvas
+>>>>>>> Stashed changes
 
             # Make Genres' Text
             # TODO Make Genre Text bigger and postioning following template
             fontSize = int(imageWidth * 0.030)
             font = ImageFont.load_default(size=fontSize)  
             genreText = "Disco | Boogie | Leftfield"
+<<<<<<< Updated upstream
             genreTextBbox = draw.textbbox((0, 0), genreText, font=font)
+=======
+            genreText = "Folk | Disco"
+            genreTextBbox = draw.textbbox((0, 0), genreText, font=fontGenre)
+>>>>>>> Stashed changes
             genreTextSize = (genreTextBbox[2] - genreTextBbox[0], genreTextBbox[3] - genreTextBbox[1])
             genreTextX = int(imageWidth * positionRatio[0])
             genreTextY = showTextPosition[1] + showTextSize[1] + int(imageHeight * 0.04)  # Adjust vertical position
             genreTextPosition = (genreTextX, genreTextY)
 
+            # Calculate the size of the rounded rectangle ensuring text is centered
             genreRectSize = (
                 genreTextPosition[0] - rectangleMargin,
                 genreTextPosition[1] - rectangleMargin,
                 genreTextPosition[0] + genreTextSize[0] + rectangleMargin,
                 genreTextPosition[1] + genreTextSize[1] + rectangleMargin
             )
+
+            # Ensure the text is centered within the rectangle
+            genreTextCenterX = (genreRectSize[0] + genreRectSize[2]) / 2  # Calculate center X
+            genreTextCenterY = (genreRectSize[1] + genreRectSize[3]) / 2  # Calculate center Y
+
+            # Adjust genreRectSize to center the text
+            genreRectSize = (
+                genreTextCenterX - genreTextSize[0] / 2 - rectangleMarginWidth,
+                genreTextCenterY - genreTextSize[1] / 2 - rectangleMarginHeight,
+                genreTextCenterX + genreTextSize[0] / 2 + rectangleMarginWidth,
+                genreTextCenterY + genreTextSize[1] / 2 + rectangleMarginHeight
+            )
             draw_rounded_rectangle(draw, genreRectSize, radius, fill=rbvBrand["rgbColor"])
+<<<<<<< Updated upstream
             draw.text(genreTextPosition, genreText, font=font, fill="black") # put Genre Text in the image
 
 
+=======
+            draw.text(genreTextPosition, genreText, font=fontGenre, fill="black") # put Genre Text in the image
+            '''
+>>>>>>> Stashed changes
             # Add RBV logo into the show
             with Image.open(rbvBrand["logoFilePath"]) as rbvLogo:
                 rbvLogo = rbvLogo.convert("RGBA")
